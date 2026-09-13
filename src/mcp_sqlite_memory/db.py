@@ -5,7 +5,7 @@ import secrets
 import sqlite3
 import time
 from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -184,9 +184,16 @@ class Database:
         self.settings = settings
         self.path = settings.db_path.expanduser().resolve()
         self.session = new_session_id()
-        self.snapshot_dir = self.path.parent / f"{self.path.stem}.snapshots"
+        self._default_snapshot_dir = self.path.parent / f"{self.path.stem}.snapshots"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._bootstrap()
+
+    @property
+    def snapshot_dir(self) -> Path:
+        """Where snapshots go: --snapshot-dir when set, else <db>.snapshots/ next to the file."""
+        if self.settings.snapshot_dir is not None:
+            return self.settings.snapshot_dir.expanduser()
+        return self._default_snapshot_dir
 
     def _raw(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path, timeout=BUSY_TIMEOUT_S, isolation_level=None)
@@ -219,15 +226,25 @@ class Database:
         return frozenset(row[0] for row in rows)
 
     def snapshot(self) -> Path | None:
-        """Copy the database with the online backup API; keep the newest N copies."""
+        """Copy the database with the online backup API; keep the newest N copies.
+
+        Returns None when snapshots are disabled or the target directory cannot be used
+        (a removable drive that is not plugged in, a file where the directory should be).
+        A snapshot problem is logged and never fails the caller."""
         if self.settings.snapshots <= 0:
             return None
-        self.snapshot_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%f")[:-3] + "Z"
         target = self.snapshot_dir / f"{self.path.stem}.{stamp}.db"
-        with self.internal() as src, closing(sqlite3.connect(target)) as dst:
-            src.backup(dst)
-        self._rotate()
+        try:
+            self.snapshot_dir.mkdir(parents=True, exist_ok=True)
+            with self.internal() as src, closing(sqlite3.connect(target)) as dst:
+                src.backup(dst)
+            self._rotate()
+        except (OSError, sqlite3.Error) as exc:
+            with suppress(OSError):
+                target.unlink(missing_ok=True)  # never leave a half-written copy behind
+            log.warning("snapshot skipped: %s", exc)
+            return None
         log.info("snapshot written: %s", target)
         return target
 

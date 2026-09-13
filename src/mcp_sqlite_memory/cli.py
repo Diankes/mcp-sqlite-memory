@@ -91,6 +91,13 @@ def build_parser() -> argparse.ArgumentParser:
         "[MCP_SQLITE_SNAPSHOTS]",
     )
     parser.add_argument(
+        "--snapshot-dir",
+        default=_env("SNAPSHOT_DIR"),
+        metavar="PATH",
+        help="directory for snapshots, for example a removable drive (default: "
+        "<db>.snapshots next to the database) [MCP_SQLITE_SNAPSHOT_DIR]",
+    )
+    parser.add_argument(
         "--rg",
         default=_env("RG"),
         metavar="PATH",
@@ -118,6 +125,7 @@ def settings_from_args(args: argparse.Namespace) -> Settings:
         max_update_rows=args.max_update_rows,
         search_candidates=args.search_candidates,
         snapshots=args.snapshots,
+        snapshot_dir=Path(args.snapshot_dir) if args.snapshot_dir else None,
         rg_path=args.rg,
         verbose=args.verbose,
     )

@@ -19,6 +19,7 @@ class Settings:
     max_update_rows: int = 500  # write_query rolls back an UPDATE that touches more rows
     search_candidates: int = 5_000  # rows the SQL filter may hand to ripgrep in search_text
     snapshots: int = 5  # snapshot files kept per database; 0 disables snapshots
+    snapshot_dir: Path | None = None  # snapshot target; None = <db>.snapshots/ by the db
     rg_path: str | None = None  # explicit ripgrep executable; None looks up "rg" on PATH
     verbose: bool = False
 

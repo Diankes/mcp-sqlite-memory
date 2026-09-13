@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.0 (2026-09-13)
+
+- New `snapshot(reason="manual")` tool: an on-demand snapshot through the same online backup
+  API and rotation that `destructive_query` uses. The reason lands in the audit log.
+- New `--snapshot-dir PATH` flag and `MCP_SQLITE_SNAPSHOT_DIR` variable: put snapshots
+  somewhere other than `<db>.snapshots/` next to the database, for example a removable drive.
+- A snapshot whose target cannot be used (drive unplugged, a file where the directory should
+  be) is skipped with a warning and reported as skipped; it never fails the calling tool.
+  Thirteen tools now.
+
 ## v0.2.0 (2026-09-13)
 
 - `get_resume_context` gains `exclude_kinds`, a comma-separated list of event kinds to hide,

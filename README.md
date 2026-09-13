@@ -113,7 +113,7 @@ in the Environment variables box.
 ### Recommended permissions
 
 Tools appear to Claude Code as `mcp__sqlite-memory__<tool>`. The one lock the server cannot
-provide is the permission prompt, so allow the eleven ordinary tools and leave
+provide is the permission prompt, so allow the twelve ordinary tools and leave
 `destructive_query` on ask. Paste this into `.claude/settings.json` in the project, or into
 `~/.claude/settings.json` for every project:
 
@@ -128,6 +128,7 @@ provide is the permission prompt, so allow the eleven ordinary tools and leave
       "mcp__sqlite-memory__get_schema",
       "mcp__sqlite-memory__create_view",
       "mcp__sqlite-memory__append_event",
+      "mcp__sqlite-memory__snapshot",
       "mcp__sqlite-memory__verify_chain",
       "mcp__sqlite-memory__checkpoint",
       "mcp__sqlite-memory__get_resume_context",
@@ -150,6 +151,7 @@ provide is the permission prompt, so allow the eleven ordinary tools and leave
 | `get_schema(include_system=false)` | Every CREATE statement as stored, view descriptions included. | SQL text |
 | `create_view(name, select_sql, description="", replace=false)` | Save a SELECT as a named view with a description stored inside it. | `ok: view recent created` |
 | `append_event(content, kind="note")` | Append to the hash-chained memory log. | `ok: event 42 appended (hash 3f9a1c...)` |
+| `snapshot(reason="manual")` | On-demand snapshot of the database file, same online backup API as `destructive_query`, same rotation. Respects `--snapshots` (0 disables) and `--snapshot-dir`; an unreachable target is reported, never raised. | `ok: snapshot written: <path>` or `ok: snapshot skipped (disabled or target unavailable)` |
 | `verify_chain()` | Recompute the whole chain. | `{"ok": true, "events": 42, ...}` or the first breaking event id and why |
 | `checkpoint(summary)` | Store a state summary anchored to the current chain head. | `ok: checkpoint 7 written at event 42` |
 | `get_resume_context(max_events=50, exclude_kinds="")` | Latest checkpoint, events since it, chain status. Call it first in a new session. `exclude_kinds` is a comma-separated list of kinds to hide, for example hook-written raw events. When the events overflow the byte cap the oldest are dropped, never the newest. | Text block plus CSV |
@@ -197,9 +199,11 @@ All of these live in the server; none depend on the agent behaving.
   total bytes, and characters per cell.
 - **UPDATE rowcount guard** in `write_query`: a forgotten WHERE clause is rolled back instead of
   rewriting a table.
-- **Snapshots** before every `destructive_query`, made with SQLite's online backup API and kept in
-  `<db>.snapshots/` next to the database, newest five by default. A statement that fails syntax or
-  policy checks costs no snapshot.
+- **Snapshots** before every `destructive_query`, and on demand through the `snapshot` tool,
+  made with SQLite's online backup API and kept in `<db>.snapshots/` next to the database
+  (or under `--snapshot-dir`, for example a removable drive), newest five by default. A
+  statement that fails syntax or policy checks costs no snapshot, and a snapshot target that
+  cannot be reached is skipped with a warning rather than failing the call.
 - **One statement per call**, enforced by Python's sqlite3 module.
 - **Parameterized SQL** wherever the server builds statements; identifiers are validated and
   quoted.
@@ -219,6 +223,7 @@ All of these live in the server; none depend on the agent behaving.
 | `--max-update-rows N` | `MCP_SQLITE_MAX_UPDATE_ROWS` | 500 |
 | `--search-candidates N` | `MCP_SQLITE_SEARCH_CANDIDATES` | 5000 |
 | `--snapshots N` | `MCP_SQLITE_SNAPSHOTS` | 5 (0 disables) |
+| `--snapshot-dir PATH` | `MCP_SQLITE_SNAPSHOT_DIR` | `<db>.snapshots/` next to the database |
 | `--rg PATH` | `MCP_SQLITE_RG` | `rg` on PATH |
 | `-v`, `--verbose` | `MCP_SQLITE_VERBOSE` | off |
 

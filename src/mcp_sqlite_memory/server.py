@@ -375,6 +375,24 @@ def build_server(settings: Settings) -> MCPServer:
             span.detail = {"event_id": event_id, "kind": kind}
             return f"ok: event {event_id} appended (hash {digest[:12]}...)"
 
+    @mcp.tool(annotations=WRITES, structured_output=False)
+    def snapshot(
+        reason: Annotated[
+            str,
+            Field(description="Why this snapshot is being taken; recorded in the audit log."),
+        ] = "manual",
+    ) -> str:
+        """Write an on-demand snapshot of the database file with the same online backup API
+        destructive_query uses. Respects --snapshots (0 disables; otherwise how many are kept)
+        and --snapshot-dir. Never fails the caller: an unreachable target is reported as
+        skipped."""
+        with audit.span("snapshot", reason) as span:
+            path = db.snapshot()
+            span.detail = {"reason": reason, "path": str(path) if path else None}
+            if path is None:
+                return "ok: snapshot skipped (disabled or target unavailable)"
+            return f"ok: snapshot written: {path}"
+
     @mcp.tool(annotations=READ_ONLY, structured_output=False)
     def verify_chain() -> str:
         """Recompute the memory_events hash chain and report whether it is intact, with the

@@ -15,6 +15,7 @@ EXPECTED_TOOLS = {
     "get_schema",
     "create_view",
     "append_event",
+    "snapshot",
     "verify_chain",
     "checkpoint",
     "get_resume_context",
