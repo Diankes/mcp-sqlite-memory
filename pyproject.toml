@@ -1,0 +1,58 @@
+[project]
+name = "mcp-sqlite-memory"
+version = "0.1.0"
+description = "SQLite MCP server for agents: SQL as the primary tool, tamper-evident memory, automatic audit log, server-side safety rails"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Diankes", email = "122510601+Diankes@users.noreply.github.com" },
+]
+requires-python = ">=3.12"
+keywords = ["mcp", "model-context-protocol", "sqlite", "agent-memory", "claude-code"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # Deliberately capped at the current major. mcp 2.0 (2026-07-28) renamed
+    # FastMCP to MCPServer, removed the low-level decorator API and changed how
+    # tool errors surface; an open-ended ">=1.x" pin is exactly how the reference
+    # server this replaces broke. Raise the cap on purpose, after reading the
+    # release notes, never by accident through a resolver upgrade.
+    "mcp>=2.2,<3",
+    # Only for Annotated[..., Field(...)] input constraints; mcp pulls it in anyway.
+    "pydantic>=2,<3",
+]
+
+[project.scripts]
+mcp-sqlite-memory = "mcp_sqlite_memory.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Diankes/mcp-sqlite-memory"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

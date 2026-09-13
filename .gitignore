@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# SQLite databases and their sidecar files: data never belongs in git
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Snapshots written by destructive_query
+*.snapshots/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.claude/settings.local.json
