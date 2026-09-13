@@ -19,17 +19,26 @@ Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and, for `search_text`,
 
 ## Configure it in Claude Code
 
-From GitHub, once the repository is pushed:
+### From the terminal
+
+From the published repository, pinned to a release tag:
 
 ```
-claude mcp add sqlite-memory --scope user -- uvx --from git+https://github.com/Diankes/mcp-sqlite-memory mcp-sqlite-memory --db F:\data\memory.db
+claude mcp add sqlite-memory --scope user -- uvx --from git+https://github.com/Diankes/mcp-sqlite-memory@v0.1.0 mcp-sqlite-memory --db F:\data\memory.db
 ```
 
-From a local checkout while developing:
+From a local clone while developing:
 
 ```
-claude mcp add sqlite-memory --scope user -- uv run --directory F:\mcp-sqlite-memory mcp-sqlite-memory --db F:\data\memory.db
+claude mcp add sqlite-memory --scope user -- uv --directory F:\mcp-sqlite-memory run mcp-sqlite-memory --db F:\data\memory.db
 ```
+
+**Pin the tag.** `@v0.1.0` installs exactly the commit that was tested and released. A bare
+repository URL tracks whatever is on `main`, so a fresh install can pick up an unreviewed
+commit, and two machines set up a week apart can run different code under the same name.
+Worse, `uvx` caches the environment it built, so tracking `main` does not even update
+predictably: you get whichever commit was current the last time uv resolved the source, and a
+different one after a cache refresh. Pin a tag, and move to a newer tag on purpose.
 
 `--db` is the only required option; the file and its parent folder are created on first start and
 the three server tables are bootstrapped automatically. Every flag can also be given as an
@@ -37,9 +46,76 @@ environment variable, for example
 `claude mcp add sqlite-memory -e MCP_SQLITE_DB=F:\data\memory.db -- uvx ...`.
 `uv` and `uvx` are native executables, so no `cmd /c` wrapper is needed on Windows.
 
+### Using this with Claude Code in VS Code
+
+The Claude Code extension has an "Add MCP server" form. For this server the Transport is always
+**Local command (stdio)**, and the Arguments box takes one argument per line. There are two ways
+to fill it in.
+
+**1. From the published repository** (recommended once a version is tagged)
+
+| Field | Value |
+|---|---|
+| Name | `sqlite-memory` |
+| Transport | Local command (stdio) |
+| Command | `uvx` |
+| Arguments | see below, one per line |
+| Environment variables | leave empty |
+| Scope | Local |
+
+```
+--from
+git+https://github.com/Diankes/mcp-sqlite-memory@v0.1.0
+mcp-sqlite-memory
+--db
+F:\data\my-project-memory.db
+```
+
+The same tag-pinning advice applies here: `@v0.1.0` is the tested release, a bare
+`git+https://github.com/Diankes/mcp-sqlite-memory` line silently tracks `main`.
+
+Scope **Local** keeps the entry private to you and to the project you have open, which is what
+makes the database per project: open another project, add the server again with a different
+`--db` path, and each project gets its own memory and audit log. Choose **User** instead if you
+want one shared database across every project, with one `--db` path. **Project** writes the
+entry to `.mcp.json` in the repository, which is checked into git, so the `--db` path then has to
+be valid on every machine that clones it.
+
+**2. From a local clone** (while developing the server itself)
+
+| Field | Value |
+|---|---|
+| Name | `sqlite-memory` |
+| Transport | Local command (stdio) |
+| Command | `uv` |
+| Arguments | see below, one per line |
+| Environment variables | leave empty |
+| Scope | Local |
+
+```
+--directory
+F:\mcp-sqlite-memory
+run
+mcp-sqlite-memory
+--db
+F:\data\my-project-memory.db
+```
+
+**`--db` must be an absolute path in this mode.** `--directory` tells uv to change into the
+server's own folder before running, so a relative path such as `memory.db` or `data\memory.db`
+resolves inside the clone (`F:\mcp-sqlite-memory\memory.db`), not inside the project you have
+open in VS Code. Nothing warns you: the server creates an empty database at the wrong location,
+the clone's `.gitignore` hides `*.db` files, and your project appears to have no memory at all.
+
+Either way, the two `--db` lines can be replaced by one line `MCP_SQLITE_DB=F:\data\my-project-memory.db`
+in the Environment variables box.
+
+### Recommended permissions
+
 Tools appear to Claude Code as `mcp__sqlite-memory__<tool>`. The one lock the server cannot
 provide is the permission prompt, so allow the eleven ordinary tools and leave
-`destructive_query` on ask:
+`destructive_query` on ask. Paste this into `.claude/settings.json` in the project, or into
+`~/.claude/settings.json` for every project:
 
 ```json
 {
