@@ -414,15 +414,24 @@ def build_server(settings: Settings) -> MCPServer:
                 description="How many of the most recent events since the checkpoint to include.",
             ),
         ] = 50,
+        exclude_kinds: Annotated[
+            str,
+            Field(
+                description="Comma-separated kinds to leave out, for example "
+                "'prompt,compaction,session-end' to hide hook-written raw events."
+            ),
+        ] = "",
     ) -> str:
         """Call this first in a new session or after context compaction. Returns the latest
         checkpoint, the events appended since it (oldest first, most recent max_events), and the
-        result of verifying the hash chain."""
+        result of verifying the hash chain. When the events do not fit the byte cap, the oldest
+        are dropped, never the newest."""
         with audit.span("get_resume_context") as span:
             status = memory.verify()
             cp = memory.latest_checkpoint()
             since_id = cp.last_event_id if cp else 0
-            events, total = memory.events_after(since_id, max_events)
+            excluded = [k.strip() for k in exclude_kinds.split(",") if k.strip()]
+            events, total = memory.events_after(since_id, max_events, exclude_kinds=excluded)
             lines = []
             if cp:
                 lines.append(
@@ -443,18 +452,33 @@ def build_server(settings: Settings) -> MCPServer:
             if total > len(events):
                 what += f", showing the most recent {len(events)}"
             lines.append(f"# {what} | {status.summary()}")
+            dropped = 0
             if events:
-                rendered = render_table(
-                    ["id", "ts", "kind", "content"],
-                    events,
-                    max_bytes=settings.max_result_bytes,
-                    max_cell_chars=settings.max_cell_chars,
-                )
-                lines.append(rendered.body.rstrip("\n"))
+                caps = {
+                    "max_bytes": settings.max_result_bytes,
+                    "max_cell_chars": settings.max_cell_chars,
+                }
+                columns = ["id", "ts", "kind", "content"]
+                rendered = render_table(columns, events, **caps)
                 if rendered.truncated_by_bytes:
-                    lines.append(f"# events truncated at {settings.max_result_bytes} bytes")
+                    # Find how many of the NEWEST events fit, then render those oldest-first.
+                    fits = render_table(columns, list(reversed(events)), **caps).rows
+                    dropped = len(events) - fits
+                    events = events[-fits:]
+                    rendered = render_table(columns, events, **caps)
+                lines.append(rendered.body.rstrip("\n"))
+                if dropped:
+                    lines.append(
+                        f"# {dropped} older events dropped to fit {settings.max_result_bytes} "
+                        "bytes; read them with read_query on memory_events"
+                    )
             span.rows = len(events)
-            span.detail = {"checkpoint_id": cp.id if cp else None, "chain_ok": status.ok}
+            span.detail = {
+                "checkpoint_id": cp.id if cp else None,
+                "chain_ok": status.ok,
+                "excluded": excluded,
+                "dropped": dropped,
+            }
             return "\n".join(lines)
 
     @mcp.tool(annotations=READ_ONLY, structured_output=False)

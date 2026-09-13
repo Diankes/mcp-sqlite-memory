@@ -264,3 +264,19 @@ async def test_search_text_tool(client):
     assert body.endswith(
         "# 1 of 1 matching values in 1 rows (3 candidate rows x 2 columns scanned)"
     )
+
+
+async def test_resume_excludes_kinds_and_keeps_newest(client, db):
+    await call(client, "append_event", content="curated one", kind="insight")
+    for i in range(80):
+        await call(client, "append_event", content=f"raw prompt {i} " + "x" * 300, kind="prompt")
+    await call(client, "append_event", content="curated two", kind="decision")
+    plain = text(await call(client, "get_resume_context", max_events=50))
+    assert "older events dropped" in plain  # 50 newest rows of ~90 bytes overflow the 4096-byte cap
+    assert ",decision,curated two\n# 3 older events dropped" in plain  # newest kept, oldest cut
+    filtered = text(
+        await call(client, "get_resume_context", max_events=50, exclude_kinds="prompt, compaction")
+    )
+    assert "# 2 events | chain ok (82 events)" in filtered
+    assert "raw prompt" not in filtered
+    assert ",insight,curated one" in filtered and ",decision,curated two" in filtered

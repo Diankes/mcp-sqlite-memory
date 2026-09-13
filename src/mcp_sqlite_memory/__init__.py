@@ -1,3 +1,3 @@
 """SQLite MCP server with a tamper-evident memory layer, an audit log and safety rails."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

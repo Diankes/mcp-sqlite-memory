@@ -74,3 +74,15 @@ def test_empty_input_is_rejected(db):
     with pytest.raises(UserError):
         memory.checkpoint("")
     assert memory.verify().ok and memory.verify().events == 0
+
+
+def test_events_after_can_exclude_kinds(db):
+    memory = Memory(db)
+    memory.append("a", "insight")
+    memory.append("b", "prompt")
+    memory.append("c", "session-end")
+    memory.append("d", "decision")
+    rows, total = memory.events_after(0, 10, exclude_kinds=("prompt", "session-end"))
+    assert total == 2 and [r[3] for r in rows] == ["a", "d"]
+    rows, total = memory.events_after(0, 1, exclude_kinds=["prompt"])
+    assert total == 3 and [r[3] for r in rows] == ["d"]

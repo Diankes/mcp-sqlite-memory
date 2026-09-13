@@ -1,6 +1,6 @@
 [project]
 name = "mcp-sqlite-memory"
-version = "0.1.0"
+version = "0.2.0"
 description = "SQLite MCP server for agents: SQL as the primary tool, tamper-evident memory, automatic audit log, server-side safety rails"
 readme = "README.md"
 license = "MIT"

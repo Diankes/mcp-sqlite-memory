@@ -9,6 +9,7 @@ that point on, and verify() names the first row where it breaks.
 import hashlib
 import json
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 
 from mcp_sqlite_memory.db import Database, utc_now
@@ -167,16 +168,27 @@ class Memory:
             ).fetchone()
         return Checkpoint(*row) if row else None
 
-    def events_after(self, event_id: int, max_events: int) -> tuple[list[tuple], int]:
-        """The most recent max_events events after event_id, oldest first, plus the total."""
+    def events_after(
+        self, event_id: int, max_events: int, exclude_kinds: Sequence[str] = ()
+    ) -> tuple[list[tuple], int]:
+        """The most recent max_events events after event_id, oldest first, plus the total.
+
+        exclude_kinds leaves out kinds (for example hook-written raw events); the total
+        counts only the kinds that remain."""
+        excluded = [kind for kind in exclude_kinds if kind]
+        clause = ""
+        params: list[object] = [event_id]
+        if excluded:
+            clause = f" AND kind NOT IN ({', '.join('?' for _ in excluded)})"
+            params.extend(excluded)
         with self.db.internal() as conn:
             total = conn.execute(
-                "SELECT count(*) FROM memory_events WHERE id > ?", (event_id,)
+                f"SELECT count(*) FROM memory_events WHERE id > ?{clause}", params
             ).fetchone()[0]
             rows = conn.execute(
-                "SELECT id, ts, kind, content FROM memory_events WHERE id > ? "
+                f"SELECT id, ts, kind, content FROM memory_events WHERE id > ?{clause} "
                 "ORDER BY id DESC LIMIT ?",
-                (event_id, max_events),
+                [*params, max_events],
             ).fetchall()
         rows.reverse()
         return rows, total

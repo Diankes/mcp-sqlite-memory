@@ -152,8 +152,8 @@ provide is the permission prompt, so allow the eleven ordinary tools and leave
 | `append_event(content, kind="note")` | Append to the hash-chained memory log. | `ok: event 42 appended (hash 3f9a1c...)` |
 | `verify_chain()` | Recompute the whole chain. | `{"ok": true, "events": 42, ...}` or the first breaking event id and why |
 | `checkpoint(summary)` | Store a state summary anchored to the current chain head. | `ok: checkpoint 7 written at event 42` |
-| `get_resume_context(max_events=50)` | Latest checkpoint, events since it, chain status. Call it first in a new session. | Text block plus CSV |
-| `search_text(pattern, table, columns=null, where=null, key_column=null, limit=100, ignore_case=false, fixed_strings=false, context_chars=80)` | SQL narrows the rows, ripgrep matches the pattern over the selected columns. | CSV: `key,column,snippet` plus totals |
+| `get_resume_context(max_events=50, exclude_kinds="")` | Latest checkpoint, events since it, chain status. Call it first in a new session. `exclude_kinds` is a comma-separated list of kinds to hide, for example hook-written raw events. When the events overflow the byte cap the oldest are dropped, never the newest. | Text block plus CSV |
+| `search_text(pattern, table, columns=null, where=null, key_column=null, limit=100, ignore_case=false, fixed_strings=false, context_chars=80)` | SQL narrows the rows, ripgrep matches the pattern over the selected columns. Newlines inside a value appear as `⏎` in the search and the snippet, so LaTeX commands such as `\nabla` are never confused with line breaks. | CSV: `key,column,snippet` plus totals |
 
 Errors come back verbatim as tool errors (`no such table: nope`, `DROP TABLE is not allowed in
 write_query; use destructive_query`, ...) so the agent can fix the statement and retry.
@@ -221,6 +221,11 @@ All of these live in the server; none depend on the agent behaving.
 | `--snapshots N` | `MCP_SQLITE_SNAPSHOTS` | 5 (0 disables) |
 | `--rg PATH` | `MCP_SQLITE_RG` | `rg` on PATH |
 | `-v`, `--verbose` | `MCP_SQLITE_VERBOSE` | off |
+
+**Long-form notes.** The defaults suit tabular data. If the database holds prose with display
+math, such as a study log written through the memory tools, raise the two read caps so entries
+come back whole: `--max-cell-chars 8000 --max-result-bytes 131072`. Multi-line cells are valid
+CSV and are returned as written; nothing is escaped on the read path.
 
 ## Restoring a snapshot
 

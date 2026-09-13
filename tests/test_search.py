@@ -1,7 +1,7 @@
 import pytest
 
 from mcp_sqlite_memory.errors import UserError
-from mcp_sqlite_memory.search import find_ripgrep, search_text
+from mcp_sqlite_memory.search import NEWLINE_MARK, find_ripgrep, search_text
 
 RG = find_ripgrep(None)
 pytestmark = pytest.mark.skipif(RG is None, reason="ripgrep is not installed")
@@ -74,8 +74,12 @@ def test_views_need_an_explicit_key(seeded, settings):
 def test_newlines_inside_values_stay_on_one_line(seeded, settings):
     with seeded.internal() as conn:
         conn.execute("INSERT INTO notes(title, body) VALUES ('multi', 'line one\nline two')")
-    out = search(seeded, settings, pattern="one\\\\nline", context_chars=0)
-    assert out.matches == 1 and "one\\nline" in out.text
+        conn.execute("INSERT INTO notes(title, body) VALUES ('latex', 'grad is $\\nabla f$')")
+    out = search(seeded, settings, pattern="one" + NEWLINE_MARK + "line", context_chars=0)
+    assert out.matches == 1 and "one" + NEWLINE_MARK + "line" in out.text
+    # A LaTeX \n... command is not confused with an escaped newline in either direction.
+    assert search(seeded, settings, pattern="\\\\nabla", fixed_strings=False).matches == 1
+    assert search(seeded, settings, pattern="one\\\\nline").matches == 0
 
 
 def test_candidate_cap_is_reported(seeded, settings):

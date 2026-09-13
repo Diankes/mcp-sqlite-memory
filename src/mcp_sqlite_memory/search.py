@@ -16,6 +16,7 @@ from mcp_sqlite_memory.settings import Settings
 
 _TEXT_TYPE_HINTS = ("CHAR", "TEXT", "CLOB")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+NEWLINE_MARK = "⏎"  # RETURN SYMBOL, stands in for newlines inside searched values
 
 
 def find_ripgrep(explicit: str | None) -> str | None:
@@ -101,14 +102,16 @@ def search_text(
     capped = len(rows) > cap
     rows = rows[:cap]
 
-    # One physical line per (row, column) value; newlines inside a value become a literal \n.
+    # One physical line per (row, column) value. Newlines inside a value become the visible
+    # mark NEWLINE_MARK rather than a backslash-n, which would be indistinguishable from the
+    # start of LaTeX commands such as \nabla or \neq in both the search and the snippet.
     index: list[tuple[object, str, bytes]] = []
     for row in rows:
         key = row[0]
         for column, value in zip(searched, row[1:], strict=True):
             if value is None or isinstance(value, bytes):
                 continue
-            text = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+            text = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", NEWLINE_MARK)
             index.append((key, column, text.encode("utf-8", "replace")))
 
     hits: list[tuple[object, str, str]] = []
