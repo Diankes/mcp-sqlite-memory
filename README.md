@@ -3,7 +3,7 @@
 A SQLite [MCP](https://modelcontextprotocol.io) server for coding agents, built on one idea:
 hand the agent SQL as its primary tool and put the safety in the server, not in the prompt.
 
-- **SQL is the tool.** Twelve tools, all thin wrappers around one database file.
+- **SQL is the tool.** Thirteen tools, all thin wrappers around one database file.
 - **Views are reusable skills.** `create_view` stores a SELECT with a description so the next
   session finds it in `get_schema` instead of rediscovering the join.
 - **CSV, not JSON.** Results come back as CSV with a `# N rows` trailer, roughly half the tokens.
@@ -138,6 +138,19 @@ provide is the permission prompt, so allow the twelve ordinary tools and leave
   }
 }
 ```
+
+### If another tool needs to read this database directly
+
+This server has no way to publish the `--db` path it was registered with — nothing else on the
+machine can discover it automatically. A plugin such as
+[second-brain](https://github.com/Diankes/second-brain), which opens its own direct, read-only
+connection to the same file (for validation, cadence checks and rules injection, without going
+through the server) to work at all, needs to be told that same path a second time, independently
+— typically as its own `MCP_SQLITE_DB` environment variable in the consuming project's
+`.claude/settings.json`. Nothing here checks that the two agree: if you move the database or
+change one registration and not the other, each side keeps working against its own path,
+silently. See second-brain's README, "Where things live, and the one path that must match," for
+the full picture and a worked example.
 
 ## Tools
 
