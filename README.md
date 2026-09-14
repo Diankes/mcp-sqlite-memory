@@ -19,12 +19,17 @@ Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and, for `search_text`,
 
 ## Configure it in Claude Code
 
+Setting this up specifically to back the [second-brain](https://github.com/Diankes/second-brain)
+plugin? Its own README's "Install" section has the exact recipe, including the plugin's required
+flags and the matching `.claude/settings.json`; the instructions below are for using this server
+on its own, or as a starting point for a different consumer.
+
 ### From the terminal
 
 From the published repository, pinned to a release tag:
 
 ```
-claude mcp add sqlite-memory --scope user -- uvx --from git+https://github.com/Diankes/mcp-sqlite-memory@v0.1.0 mcp-sqlite-memory --db F:\data\memory.db
+claude mcp add sqlite-memory --scope user -- uvx --from git+https://github.com/Diankes/mcp-sqlite-memory@v0.3.0 mcp-sqlite-memory --db F:\data\memory.db
 ```
 
 From a local clone while developing:
@@ -33,7 +38,7 @@ From a local clone while developing:
 claude mcp add sqlite-memory --scope user -- uv --directory F:\mcp-sqlite-memory run mcp-sqlite-memory --db F:\data\memory.db
 ```
 
-**Pin the tag.** `@v0.1.0` installs exactly the commit that was tested and released. A bare
+**Pin the tag.** `@v0.3.0` installs exactly the commit that was tested and released. A bare
 repository URL tracks whatever is on `main`, so a fresh install can pick up an unreviewed
 commit, and two machines set up a week apart can run different code under the same name.
 Worse, `uvx` caches the environment it built, so tracking `main` does not even update
@@ -65,13 +70,13 @@ to fill it in.
 
 ```
 --from
-git+https://github.com/Diankes/mcp-sqlite-memory@v0.1.0
+git+https://github.com/Diankes/mcp-sqlite-memory@v0.3.0
 mcp-sqlite-memory
 --db
 F:\data\my-project-memory.db
 ```
 
-The same tag-pinning advice applies here: `@v0.1.0` is the tested release, a bare
+The same tag-pinning advice applies here: `@v0.3.0` is the tested release, a bare
 `git+https://github.com/Diankes/mcp-sqlite-memory` line silently tracks `main`.
 
 Scope **Local** keeps the entry private to you and to the project you have open, which is what
